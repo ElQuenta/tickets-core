@@ -1,0 +1,39 @@
+# .NET build and publish output
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
+publish/
+
+# IDE caches and user-specific settings
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.sln.iml
+
+# Test results and coverage
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Local environment variables and private configuration
+.env
+.env.*
+!.env.example
+!.env.sample
+appsettings.Local.json
+appsettings.*.Local.json
+*.pubxml.user
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
