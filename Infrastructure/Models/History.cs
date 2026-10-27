@@ -4,6 +4,8 @@ namespace tickets_core.Infrastructure.Models;
 
 public sealed class History
 {
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid TicketId { get; set; }
     public Guid UserId { get; set; }

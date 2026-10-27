@@ -3,7 +3,9 @@ using tickets_core.src.Handlers;
 
 DotNetEnv.Env.NoClobber().Load(Path.Combine(Directory.GetCurrentDirectory(), ".env"));
 
-var builder = WebApplication.CreateBuilder(args);
+var runSeed = args.Contains("--seed", StringComparer.OrdinalIgnoreCase);
+var builder = WebApplication.CreateBuilder(args.Where(arg =>
+    !string.Equals(arg, "--seed", StringComparison.OrdinalIgnoreCase)).ToArray());
 
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -25,6 +27,12 @@ builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+
+if (runSeed)
+{
+    await tickets_core.Infrastructure.Persistence.Seeds.DatabaseSeed.RunAsync(app.Services, app.Configuration);
+    return;
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

@@ -25,7 +25,7 @@ No existe una capa Routes separada. Heredar de `ApiControllerBase` permite usar
 
 ## Modelo y decisiones
 
-- Se conserva exactamente el conjunto de diez tablas y sus columnas del ER en `dbo`
+- Se conserva el conjunto de diez tablas del ER en `dbo`, con fechas de auditoría
   (el diagrama no especifica un esquema SQL). Los nombres C# son PascalCase;
   Fluent API conserva `ID`, `User_id`, `State_id`, `Ticket_id`, `name`, `prevState`, `newState`.
 - `uuid` → `Guid` / `uniqueidentifier`; `bool` → `bit`; `int` → `int`;
@@ -45,7 +45,16 @@ No existe una capa Routes separada. Heredar de `ApiControllerBase` permite usar
   Esta base no soporta persistencia de 2FA; incorporarla requiere ampliar el esquema.
 - Las relaciones del dominio no borran en cascada para conservar historial y evitar
   rutas múltiples de cascada en SQL Server. Identity conserva sus cascadas estándar.
-  No se agregan fechas, estados iniciales ni relaciones nuevas al historial.
+  Todas las tablas incorporan `CreatedAt` y `UpdatedAt` (`datetime2`, UTC), con
+  defaults `SYSUTCDATETIME()`. EF asigna fechas al guardar; los triggers mantienen
+  `UpdatedAt` y conservan `CreatedAt` ante actualizaciones SQL de una o varias filas.
+  Dominio, usuario y rol exponen propiedades C#; las otras cinco entidades oficiales
+  de Identity usan propiedades sombra de EF.
+  Las filas existentes reciben la fecha de aplicación de la migración; no se
+  reconstruyen fechas históricas que no estaban almacenadas.
+- `TICKET.DeletedAt` es nullable y empieza en `NULL`. El SP de lectura excluye
+  borrados; las consultas EF directas deben filtrar `DeletedAt == null` cuando corresponda.
+  El historial permanece consultable después del borrado.
 
 ## Conexión e inicio
 
@@ -103,17 +112,53 @@ y permisos para crear/actualizar el esquema. EF se registra por solicitud median
 `AddDbContext<ApplicationDbContext>`. Identity usa el mismo contexto y conexión.
 No se aplican migraciones ni se crean bases de datos automáticamente al iniciar.
 
-Después de aplicar la migración, ejecutar `Infrastructure/Sql/DatabaseObjects.sql`
-contra esa misma base con SSMS o `sqlcmd`. El script usa `GO` y `CREATE OR ALTER`:
+La migración `TicketAuditAndSeeds` instala las fechas, los triggers y los SP.
+No necesitas ejecutar scripts manualmente. `Infrastructure/Sql/DatabaseObjects.sql`
+permite reinstalar los objetos con SSMS o `sqlcmd` (usa `GO` y `CREATE OR ALTER`).
+La copia SQL de la carpeta de migraciones es un recurso embebido de esa migración;
+los cambios futuros deben instalarse mediante nuevas migraciones.
 
-```powershell
-sqlcmd -S localhost -d TicketsCore -E -b -i Infrastructure/Sql/DatabaseObjects.sql
+## Seeds
+
+Completar en `.env` o en variables de entorno, sin guardar los valores en Git:
+
+```dotenv
+Seed__Admin__UserName=
+Seed__Admin__Email=
+Seed__Admin__Password=
 ```
 
-El SP consulta el historial por ticket y la FN cuenta tickets por estado. El TG queda
-declarado como plantilla comentada porque no se especificó su regla de negocio.
-No se genera historial automáticamente ni se identifica al actor con el creador del ticket.
-El script SQL se administra por separado de las migraciones.
+Después de completar esos valores y aplicar las migraciones:
+
+```powershell
+dotnet run -- --seed
+```
+
+Este comando ejecuta los seeds y termina sin iniciar el servidor. Crea los roles
+`Admin`, `Operator` y `Technician`; Identity normaliza los nombres como `ADMIN`,
+`OPERATOR` y `TECHNICIAN`. Crea los estados `Pendiente`, `En Proceso` y `Resuelto`,
+y un administrador con contraseña hasheada por Identity. La contraseña debe cumplir
+la política de Identity: mínimo 8 caracteres, mayúsculas, minúsculas, dígitos y símbolos.
+Los seeds son transaccionales, serializan ejecuciones concurrentes y pueden repetirse
+sin duplicar registros ni cambiar contraseñas existentes. Un usuario existente con
+otro correo produce un error. Las credenciales son obligatorias; no hay valores por defecto.
+
+## Operaciones SQL de tickets
+
+| Procedimiento | Parámetros | Comportamiento |
+| --- | --- | --- |
+| `dbo.SP_ChangeTicketState` | `@Ticket_id`, `@State_id`, `@User_id`, `@Comment = NULL` | Solo permite `Pendiente → En Proceso → Resuelto`, registra ambos estados y el comentario. Rechaza saltos, retrocesos y repetir el estado. |
+| `dbo.SP_EditTicket` | `@Ticket_id`, `@User_id`, `@Title = NULL`, `@Description = NULL`, `@Comment = NULL` | `NULL` conserva el campo. Rechaza textos vacíos y operaciones sin cambios. Concatena al comentario los valores anteriores y nuevos y crea historial conservando el estado. |
+| `dbo.SP_DeleteTicket` | `@Ticket_id`, `@User_id`, `@Comment = NULL` | Asigna `DeletedAt`, registra el comentario y conserva el estado en ticket e historial. |
+| `dbo.SP_GetTicketsGroupedByState` | Ninguno | Devuelve `StateId`, `StateName`, `Tickets` (array JSON), un registro por estado, incluso sin tickets (`[]`). Excluye borrados y ordena cada grupo por `CreatedAt DESC`, con desempate por ID. |
+
+Las escrituras bloquean el ticket durante la transacción para evitar carreras;
+el ticket y su historial se guardan juntos o se revierten juntos. Rechazan tickets
+inexistentes o borrados y actores inexistentes. `@User_id` debe proceder del usuario
+autenticado en la futura capa de servicio; los SP no implementan autorización por rol.
+No se generan eventos de negocio por SQL directo o `SaveChanges`: las operaciones
+que requieran historial deben invocar estos SP. Los errores de negocio usan los
+números SQL `51000` a `51005`. La consulta agrupada ordena los estados según el flujo.
 
 ## Respuestas y seguridad
 
@@ -146,14 +191,17 @@ casos de uso. Los endpoints no deben devolver entidades de Identity directamente
 
 ```powershell
 dotnet run --project tests/SchemaChecks
+dotnet run --project tests/DatabaseChecks
 dotnet ef migrations has-pending-model-changes
 dotnet ef migrations script --idempotent --output artifacts/InitialSchema.sql
 ```
 
 SchemaChecks verifica el modelo relacional contra las diez tablas del diagrama,
 incluidos tipos, nombres, claves compuestas, índices únicos y relaciones.
-Estas verificaciones no requieren SQL Server. Aplicar las migraciones y probar
-los objetos SQL requiere una instancia de base de datos disponible.
+SchemaChecks no requiere SQL Server. DatabaseChecks utiliza Windows LocalDB con
+una base temporal independiente: aplica/revierte migraciones, ejecuta seeds dos
+veces y valida fechas, transiciones, concurrencia, historial y borrado lógico.
+La base temporal se elimina al finalizar; no lee `.env`.
 
 Referencia para el mapeo de Identity: [documentación oficial de Microsoft](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/customize-identity-model?view=aspnetcore-10.0).
 Los filtros en índices únicos opcionales siguen la [configuración de EF Core](https://learn.microsoft.com/en-us/ef/core/modeling/indexes).

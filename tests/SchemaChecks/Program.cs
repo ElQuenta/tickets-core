@@ -26,7 +26,8 @@ foreach (var (name, contract) in expected)
     var table = tables[name];
     Check(table.Schema == "dbo", $"Esquema de {name}");
     Check(table.Columns.Select(column => $"{column.Name}:{column.StoreType}").ToHashSet()
-        .SetEquals(contract.Columns.Split(' ')), $"Columnas y tipos de {name}");
+        .SetEquals((contract.Columns + " CreatedAt:datetime2 UpdatedAt:datetime2" +
+            (name == "TICKET" ? " DeletedAt:datetime2" : "")).Split(' ')), $"Columnas y tipos de {name}");
     Check(string.Join(' ', table.PrimaryKey!.Columns.Select(column => column.Name)) == contract.Key,
         $"Clave primaria de {name}");
 }
@@ -54,7 +55,7 @@ Check(foreignKeys.SetEquals(new[]
 }), "Relaciones del ER, sin claves foráneas adicionales");
 
 foreach (var name in new[] { "TICKET", "HISTORY", "STATE" })
-    Check(tables[name].Columns.All(column => !column.IsNullable), $"Campos obligatorios de {name}");
+    Check(tables[name].Columns.Where(column => column.Name != "DeletedAt").All(column => !column.IsNullable), $"Campos obligatorios de {name}");
 
 foreach (var name in new[] { "TICKET", "HISTORY" })
     Check(tables[name].ForeignKeyConstraints.All(key => key.OnDeleteAction ==
@@ -63,6 +64,13 @@ foreach (var name in new[] { "TICKET", "HISTORY" })
 foreach (var name in new[] { "AspNetUserClaims", "AspNetRoleClaims" })
     Check(tables[name].Columns.Single(column => column.Name == "Id").PropertyMappings
         .All(mapping => mapping.Property.ValueGenerated == ValueGenerated.OnAdd), $"Id autogenerado de {name}");
+
+Check(tables["TICKET"].Columns.Single(column => column.Name == "DeletedAt").IsNullable, "DeletedAt nullable");
+foreach (var entity in context.Model.GetEntityTypes())
+{
+    foreach (var name in new[] { "CreatedAt", "UpdatedAt" })
+        Check(entity.FindProperty(name)?.GetDefaultValueSql() == "SYSUTCDATETIME()", $"Default UTC: {entity.Name}.{name}");
+}
 
 Console.WriteLine("Contrato ER verificado: 10 tablas, columnas, tipos, PK, UK y FK correctos.");
 

@@ -9,6 +9,7 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
     public void Configure(EntityTypeBuilder<Ticket> builder)
     {
         builder.ToTable("TICKET");
+        builder.Property(ticket => ticket.DeletedAt).HasColumnType("datetime2");
         builder.HasKey(ticket => ticket.Id);
         builder.Property(ticket => ticket.Id).HasColumnName("ID");
         builder.Property(ticket => ticket.UserId).HasColumnName("User_id");
