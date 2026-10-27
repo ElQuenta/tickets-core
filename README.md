@@ -126,6 +126,12 @@ Completar en `.env` o en variables de entorno, sin guardar los valores en Git:
 Seed__Admin__UserName=
 Seed__Admin__Email=
 Seed__Admin__Password=
+Seed__Operator__UserName=
+Seed__Operator__Email=
+Seed__Operator__Password=
+Seed__Technician__UserName=
+Seed__Technician__Email=
+Seed__Technician__Password=
 ```
 
 Después de completar esos valores y aplicar las migraciones:
@@ -137,11 +143,17 @@ dotnet run -- --seed
 Este comando ejecuta los seeds y termina sin iniciar el servidor. Crea los roles
 `Admin`, `Operator` y `Technician`; Identity normaliza los nombres como `ADMIN`,
 `OPERATOR` y `TECHNICIAN`. Crea los estados `Pendiente`, `En Proceso` y `Resuelto`,
-y un administrador con contraseña hasheada por Identity. La contraseña debe cumplir
+y tres cuentas de prueba, cada una con su rol y contraseña hasheada por Identity.
+Los nombres de usuario y correos deben ser distintos entre las tres cuentas.
+Cada contraseña debe cumplir
 la política de Identity: mínimo 8 caracteres, mayúsculas, minúsculas, dígitos y símbolos.
 Los seeds son transaccionales, serializan ejecuciones concurrentes y pueden repetirse
 sin duplicar registros ni cambiar contraseñas existentes. Un usuario existente con
-otro correo produce un error. Las credenciales son obligatorias; no hay valores por defecto.
+otro correo produce un error; también se rechaza un correo ya asociado a otra cuenta.
+Las credenciales de las tres cuentas son obligatorias; no hay valores por defecto.
+Si cambias una contraseña en `.env`, el seed no reemplaza la que ya está guardada;
+para una cuenta existente utiliza el flujo de cambio o recuperación de contraseña.
+El login utiliza el `UserName` configurado aunque el campo de la petición se llame `email`.
 
 ## Operaciones SQL de tickets
 
