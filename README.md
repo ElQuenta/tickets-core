@@ -19,7 +19,7 @@ tests/SchemaChecks/ Verificación ejecutable del contrato ER sin base de datos
 ```
 
 Flujo previsto: Controller → Service → Repository → ApplicationDbContext.
-La estructura inicial no publica endpoints de negocio ni de autenticación.
+La aplicación publica los endpoints nativos de Identity bajo `/api/auth`.
 No existe una capa Routes separada. Heredar de `ApiControllerBase` permite usar
 `api/[controller]` y las convenciones de validación de `[ApiController]`.
 
@@ -179,13 +179,57 @@ para establecer un mensaje propio sin doble envoltura.
 }
 ```
 
-Identity registra usuarios/roles, hashing estándar, tokens de recuperación y cookies
+Identity registra usuarios/roles, hashing estándar, tokens de recuperación, bearer tokens y cookies
 HttpOnly/Secure. Configura correo único, longitud mínima de contraseña de 8 y bloqueo
 tras 5 intentos por 5 minutos (los flujos de acceso deberán usar `lockoutOnFailure`).
 Las respuestas de autenticación usan 401/403 sin redirecciones HTML.
-Los futuros controllers que requieran sesión deben declarar `[Authorize]`; los flujos
-de autenticación y la protección CSRF de operaciones con cookies requieren sus propios
-casos de uso. Los endpoints no deben devolver entidades de Identity directamente.
+Los controllers que requieran sesión deben declarar `[Authorize]`. Los endpoints
+no deben devolver entidades de Identity directamente.
+
+## Endpoints de Identity
+
+Las rutas nativas se publican bajo `/api/auth` y aparecen en `/openapi/v1.json`
+en Development. No hay ruta de 2FA: `/api/auth/manage/2fa` devuelve 404 y no figura
+en OpenAPI. No se añade una columna `TwoFactorEnabled` ni se requieren migraciones nuevas.
+
+| Método | Ruta |
+| --- | --- |
+| POST | `/api/auth/register` |
+| POST | `/api/auth/login` |
+| POST | `/api/auth/refresh` |
+| GET | `/api/auth/confirmEmail` |
+| POST | `/api/auth/resendConfirmationEmail` |
+| POST | `/api/auth/forgotPassword` |
+| POST | `/api/auth/resetPassword` |
+| GET / POST | `/api/auth/manage/info` |
+
+`POST /api/auth/login?useCookies=true` inicia sesión con cookies. Sin ese parámetro
+devuelve tokens bearer propios de Identity (no JWT). El cuerpo de login contiene
+`email` y `password`; Identity utiliza `email` como nombre de usuario. Para el admin
+de seed, si `Seed__Admin__UserName` es diferente de su correo, enviar ese nombre en
+el campo `email`. Los registros nativos usan el correo como nombre de usuario.
+
+`manage/info` requiere autenticación. Las respuestas de los handlers nativos
+conservan su formato de Identity y no pasan por el filtro MVC `ApiResponseFilter`.
+Referencia: [Identity API de Microsoft](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-10.0).
+
+Para registro, confirmación de correo y recuperación de contraseña, configurar un
+servidor SMTP en `.env` o variables del entorno antes de usar esos flujos:
+
+```dotenv
+Smtp__Host=
+Smtp__Port=587
+Smtp__EnableSsl=true
+Smtp__UserName=
+Smtp__Password=
+Smtp__FromAddress=
+Smtp__FromName='Tickets Core'
+```
+
+`Host` y `FromAddress` son obligatorios para enviar. `UserName` y `Password`
+dependen del servidor SMTP; los secretos permanecen fuera de archivos versionados.
+La API puede iniciar sin SMTP, pero las operaciones que intenten enviar correo
+fallarán hasta configurarlo. No se registran enlaces ni códigos de recuperación.
 
 ## Verificación
 

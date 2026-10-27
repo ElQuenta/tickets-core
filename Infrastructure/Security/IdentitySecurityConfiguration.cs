@@ -8,14 +8,18 @@ public static class IdentitySecurityConfiguration
 {
     public static IServiceCollection AddIdentitySecurity(this IServiceCollection services)
     {
-        services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
+        services.AddIdentityApiEndpoints<ApplicationUser>(options =>
         {
             options.User.RequireUniqueEmail = true;
             options.Password.RequiredLength = 8;
             options.Lockout.MaxFailedAccessAttempts = 5;
             options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
             options.Stores.MaxLengthForKeys = 128;
-        }).AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders();
+        }).AddRoles<ApplicationRole>()
+            .AddEntityFrameworkStores<ApplicationDbContext>();
+
+        services.AddOptions<SmtpOptions>().BindConfiguration("Smtp");
+        services.AddTransient<IEmailSender<ApplicationUser>, IdentityEmailSender>();
 
         services.ConfigureApplicationCookie(options =>
         {

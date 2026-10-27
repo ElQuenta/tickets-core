@@ -1,4 +1,5 @@
 using tickets_core.Infrastructure;
+using tickets_core.Infrastructure.Security;
 using tickets_core.src.Handlers;
 
 DotNetEnv.Env.NoClobber().Load(Path.Combine(Directory.GetCurrentDirectory(), ".env"));
@@ -52,5 +53,6 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapIdentityEndpoints();
 
 app.Run();
