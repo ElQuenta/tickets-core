@@ -223,6 +223,16 @@ el campo `email`. Los registros nativos usan el correo como nombre de usuario.
 
 `manage/info` requiere autenticación. Las respuestas de los handlers nativos
 conservan su formato de Identity y no pasan por el filtro MVC `ApiResponseFilter`.
+El login personalizado también conserva una respuesta directa: incluye `username`
+y `roles`, además de `tokenType`, `accessToken`, `expiresIn` y `refreshToken` cuando
+se usan tokens. Con cookies devuelve únicamente `username` y `roles`.
+
+El flujo se divide en `CustomLoginEndpoints` (validación de entrada y respuesta HTTP),
+`AuthService` (credenciales, bloqueo, roles y sesión) e `IdentityTokenService`
+(emisión de tokens de Identity). Los DTO están en `src/Contracts/Login*.cs`.
+El login nativo se excluye en `IdentityEndpoints` para evitar rutas duplicadas.
+`/refresh` conserva el contrato nativo de Identity.
+
 Referencia: [Identity API de Microsoft](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-10.0).
 
 Para registro, confirmación de correo y recuperación de contraseña, configurar un

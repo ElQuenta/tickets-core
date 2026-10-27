@@ -18,6 +18,8 @@ public static class DependencyInjection
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure()));
         services.AddIdentitySecurity();
+        services.AddScoped<IdentityTokenService>();
+        services.AddScoped<AuthService>();
         services.AddScoped<HistoryRepository>();
         services.AddScoped<RoleRepository>();
         services.AddScoped<RoleService>();

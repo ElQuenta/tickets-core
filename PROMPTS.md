@@ -109,3 +109,10 @@ erDiagram
 Prompt de ajuste de migraciones y seeds
 ### Prompt
 Quiero que añadas created at, updated at en todas las tablas, de igual forma quiero que crees los archivos de seed, donde se indiquen los roles de Admin, Operator y technician (NORMALIZA los nombres) a la par que un usuario de prueba de tipo admin con datos extraidos del env para no revelar datos sensibles.  de igual forma Los siguientes estados: Pendiente, En Proceso y Resuelto.
+
+---
+## Prompt3
+### Descripción
+Corrección de implementación
+### Prompt
+Quiero que corrijas la implementación de repository de states y UserRole de forma tal que se eliminen posibles errores de logica además de errores de sintaxis presentes en el archivo

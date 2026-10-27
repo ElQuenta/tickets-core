@@ -54,5 +54,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapIdentityEndpoints();
+app.MapCustomLogin();
 
 app.Run();
