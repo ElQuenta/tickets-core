@@ -19,6 +19,10 @@ public static class DependencyInjection
             options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure()));
         services.AddIdentitySecurity();
         services.AddScoped<HistoryRepository>();
+        services.AddScoped<RoleRepository>();
+        services.AddScoped<RoleService>();
+        services.AddScoped<UserRoleRepository>();
+        services.AddScoped<UserRoleService>();
         services.AddScoped<TicketRepository>();
         services.AddScoped<TicketService>();
         services.AddScoped<StateRepository>();
