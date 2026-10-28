@@ -18,6 +18,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Infrastructure/Persistence/Migrations/TicketAuditObjects.sql" />
     <EmbeddedResource Include="Infrastructure/Persistence/Migrations/TicketEquipmentObjects.sql" />
+    <EmbeddedResource Include="Infrastructure/Persistence/Migrations/TicketStateRollbackObjects.sql" />
   </ItemGroup>
 
   <ItemGroup>

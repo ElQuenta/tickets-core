@@ -177,7 +177,7 @@ try
     await Execute("EXEC dbo.SP_ChangeTicketState @Ticket_id=@ticket, @State_id=@state, @User_id=@user, @Comment=N'Atendiendo'",
         ("ticket", ticket.Id), ("state", states["En Proceso"]), ("user", admin.Id));
     await ExpectError(51003, "EXEC dbo.SP_ChangeTicketState @Ticket_id=@ticket, @State_id=@state, @User_id=@user",
-        ("ticket", ticket.Id), ("state", states["Pendiente"]), ("user", admin.Id));
+        ("ticket", ticket.Id), ("state", states["En Proceso"]), ("user", admin.Id));
     await ExpectError(51001, "EXEC dbo.SP_EditTicket @Ticket_id=@ticket, @User_id=@user, @Title=N'Inválido'",
         ("ticket", ticket.Id), ("user", Guid.NewGuid()));
     await ExpectError(51005, "EXEC dbo.SP_EditTicket @Ticket_id=@ticket, @User_id=@user, @Title=N'Original'",
@@ -233,6 +233,27 @@ try
     await Execute("EXEC dbo.SP_ChangeTicketState @Ticket_id=@ticket, @User_id=@user, @State_id=@state",
         ("ticket", other.Id), ("user", admin.Id), ("state", states["Resuelto"]));
     Check(await db.Histories.CountAsync(history => history.TicketId == other.Id) == 2, "Secuencia completa hasta Resuelto");
+
+    // Revertir la nueva migración restaura la regla anterior sin alterar el modelo.
+    await migrator.MigrateAsync("20261028040704_AddTicketEquipment");
+    await ExpectError(51003, "EXEC dbo.SP_ChangeTicketState @Ticket_id=@ticket, @State_id=@state, @User_id=@user",
+        ("ticket", other.Id), ("state", states["Pendiente"]), ("user", admin.Id));
+    await db.Database.MigrateAsync();
+    var previousState = "Resuelto";
+    foreach (var (nextState, index) in new[] { "En Proceso", "Pendiente", "En Proceso", "Resuelto", "Pendiente", "En Proceso", "Resuelto" }
+        .Select((state, index) => (state, index)))
+    {
+        var comment = $"Transición con retrocesos {index}";
+        await ticketService.ChangeStateAsync(other.Id, admin.Id, new ChangeTicketStateRequest(states[nextState], comment));
+        var entry = await db.Histories.SingleAsync(history => history.TicketId == other.Id && history.Comment.Contains(comment));
+        Check(entry.PrevState == previousState && entry.NewState == nextState && entry.UserId == admin.Id,
+            $"Auditoría de transición {previousState} -> {nextState}");
+        Check(await db.Tickets.AnyAsync(item => item.Id == other.Id && item.StateId == states[nextState]),
+            $"Estado persistido: {nextState}");
+        previousState = nextState;
+    }
+    Check(await db.Histories.CountAsync(history => history.TicketId == other.Id) == 9,
+        "Cada avance o retroceso genera exactamente un evento de historial");
 
     // Verifica actualización directa por SQL, en varias filas, y CreatedAt inmutable.
     await Execute("UPDATE dbo.TICKET SET Title=Title + N'!', CreatedAt='2000-01-01', UpdatedAt='2000-01-01'");

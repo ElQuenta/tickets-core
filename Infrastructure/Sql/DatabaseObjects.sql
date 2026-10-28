@@ -26,8 +26,9 @@ BEGIN
         SELECT @NewState = name FROM dbo.STATE WHERE ID = @State_id;
         IF @NewState IS NULL THROW 51002, N'Estado inexistente.', 1;
         IF NOT ((@State = N'Pendiente' AND @NewState = N'En Proceso')
-             OR (@State = N'En Proceso' AND @NewState = N'Resuelto'))
-            THROW 51003, N'Transición inválida. Use Pendiente -> En Proceso -> Resuelto.', 1;
+             OR (@State = N'En Proceso' AND @NewState IN (N'Pendiente', N'Resuelto'))
+             OR (@State = N'Resuelto' AND @NewState IN (N'Pendiente', N'En Proceso')))
+            THROW 51003, N'Transición inválida. Avance un paso o retroceda a un estado anterior; no repita el estado.', 1;
         UPDATE dbo.TICKET SET State_id = @State_id, UpdatedAt = @Now WHERE ID = @Ticket_id;
         INSERT dbo.HISTORY (ID, Ticket_id, User_id, Comment, prevState, newState, CreatedAt, UpdatedAt)
         VALUES (NEWID(), @Ticket_id, @User_id,

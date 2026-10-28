@@ -165,10 +165,14 @@ El login utiliza el `UserName` configurado aunque el campo de la petición se ll
 
 | Procedimiento | Parámetros | Comportamiento |
 | --- | --- | --- |
-| `dbo.SP_ChangeTicketState` | `@Ticket_id`, `@State_id`, `@User_id`, `@Comment = NULL` | Solo permite `Pendiente → En Proceso → Resuelto`, registra ambos estados y el comentario. Rechaza saltos, retrocesos y repetir el estado. |
+| `dbo.SP_ChangeTicketState` | `@Ticket_id`, `@State_id`, `@User_id`, `@Comment = NULL` | Permite avanzar un paso (`Pendiente → En Proceso → Resuelto`) o retroceder a cualquier estado anterior, incluido `Resuelto → Pendiente`. Registra ambos estados y el comentario. Rechaza saltos hacia adelante y repetir el estado. |
 | `dbo.SP_EditTicket` | `@Ticket_id`, `@User_id`, `@Title = NULL`, `@Description = NULL`, `@Comment = NULL`, `@Equipment = NULL` | `NULL` conserva el campo. Rechaza textos vacíos y operaciones sin cambios. Concatena al comentario los valores anteriores y nuevos y crea historial conservando el estado. |
 | `dbo.SP_DeleteTicket` | `@Ticket_id`, `@User_id`, `@Comment = NULL` | Asigna `DeletedAt`, registra el comentario y conserva el estado en ticket e historial. |
 | `dbo.SP_GetTicketsGroupedByState` | Ninguno | Devuelve `StateId`, `StateName`, `Tickets` (array JSON), un registro por estado, incluso sin tickets (`[]`). Excluye borrados y ordena cada grupo por `CreatedAt DESC`, con desempate por ID. |
+
+La migración `AllowTicketStateRollback` instala la regla de retrocesos sin cambiar
+tablas ni datos existentes. Aplicarla con `dotnet ef database update`; al revertirla
+se restaura la regla anterior que solo permitía avances.
 
 Las escrituras bloquean el ticket durante la transacción para evitar carreras;
 el ticket y su historial se guardan juntos o se revierten juntos. Rechazan tickets
