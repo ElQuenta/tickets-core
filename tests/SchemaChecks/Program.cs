@@ -8,7 +8,7 @@ using var context = new ApplicationDbContext(new DbContextOptionsBuilder<Applica
 var tables = context.Model.GetRelationalModel().Tables.ToDictionary(table => table.Name);
 var expected = new Dictionary<string, (string Columns, string Key)>
 {
-    ["TICKET"] = ("ID:uniqueidentifier User_id:uniqueidentifier State_id:uniqueidentifier Title:nvarchar(max) Description:nvarchar(max)", "ID"),
+    ["TICKET"] = ("ID:uniqueidentifier User_id:uniqueidentifier State_id:uniqueidentifier Title:nvarchar(max) Description:nvarchar(max) Equipment:nvarchar(max)", "ID"),
     ["HISTORY"] = ("ID:uniqueidentifier Ticket_id:uniqueidentifier User_id:uniqueidentifier Comment:nvarchar(max) prevState:nvarchar(max) newState:nvarchar(max)", "ID"),
     ["STATE"] = ("ID:uniqueidentifier name:nvarchar(256)", "ID"),
     ["AspNetUsers"] = ("Id:uniqueidentifier UserName:nvarchar(256) NormalizedUserName:nvarchar(256) Email:nvarchar(256) NormalizedEmail:nvarchar(256) EmailConfirmed:bit PasswordHash:nvarchar(max) SecurityStamp:nvarchar(max) ConcurrencyStamp:nvarchar(max) PhoneNumber:nvarchar(256) PhoneNumberConfirmed:bit LockoutEnd:datetimeoffset LockoutEnabled:bit AccessFailedCount:int", "Id"),

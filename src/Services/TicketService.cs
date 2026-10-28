@@ -18,7 +18,8 @@ public sealed class TicketService(TicketRepository ticketRepository, HistoryRepo
     public async Task<TicketResponse> CreateAsync(Guid userId, CreateTicketRequest request,
         CancellationToken cancellationToken = default)
     {
-        var ticket = await _ticketRepository.CreateAsync(userId, request.Title, request.Description, cancellationToken);
+        var ticket = await _ticketRepository.CreateAsync(userId, request.Title, request.Description,
+            request.Equipment, cancellationToken);
         return ticket.ToResponse();
     }
 
@@ -39,7 +40,8 @@ public sealed class TicketService(TicketRepository ticketRepository, HistoryRepo
                 throw new UnauthorizedAccessException("Solo el administrador o el creador pueden editar el ticket.");
         }
 
-        await _ticketRepository.EditAsync(ticketId, userId, request.Title, request.Description, request.Comment, cancellationToken);
+        await _ticketRepository.EditAsync(ticketId, userId, request.Title, request.Description,
+            request.Comment, request.Equipment, cancellationToken);
     }
     
     public async Task<TicketDetails?> GetTicketByIdAsync(Guid ticketId,

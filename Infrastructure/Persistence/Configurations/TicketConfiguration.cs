@@ -16,6 +16,7 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         builder.Property(ticket => ticket.StateId).HasColumnName("State_id");
         builder.Property(ticket => ticket.Title).HasColumnType("nvarchar(max)").IsRequired();
         builder.Property(ticket => ticket.Description).HasColumnType("nvarchar(max)").IsRequired();
+        builder.Property(ticket => ticket.Equipment).HasColumnType("nvarchar(max)").IsRequired();
         builder.HasOne(ticket => ticket.User).WithMany(user => user.Tickets)
             .HasForeignKey(ticket => ticket.UserId).OnDelete(DeleteBehavior.NoAction);
         builder.HasOne(ticket => ticket.State).WithMany(state => state.Tickets)

@@ -12,6 +12,7 @@ public sealed class Ticket
     public DateTime? DeletedAt { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string Equipment { get; set; } = string.Empty;
     public ApplicationUser User { get; set; } = null!;
     public State State { get; set; } = null!;
     public ICollection<History> Histories { get; set; } = new List<History>();

@@ -116,3 +116,10 @@ Quiero que añadas created at, updated at en todas las tablas, de igual forma qu
 Corrección de implementación
 ### Prompt
 Quiero que corrijas la implementación de repository de states y UserRole de forma tal que se eliminen posibles errores de logica además de errores de sintaxis presentes en el archivo
+
+---
+## Prompt4
+### Descripción
+Corrección en la base de datos e implementación
+### Prompt
+Quiero que ajustes el modelo e implementación referido a lo que es los tickets, estos deben tener adicionado el campo de "Equipment" donde de igual forma deben de actualizarse todas las demás implementaciones, es decir todos los endpoints, services, repositories y SP/FN Relacionados debes de ejecutar la migración/deployment para la actualización de la base de datos 

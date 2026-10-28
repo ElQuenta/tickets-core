@@ -48,7 +48,8 @@ CREATE OR ALTER PROCEDURE dbo.SP_EditTicket
     @User_id uniqueidentifier,
     @Title nvarchar(max) = NULL,
     @Description nvarchar(max) = NULL,
-    @Comment nvarchar(max) = NULL
+    @Comment nvarchar(max) = NULL,
+    @Equipment nvarchar(max) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -65,16 +66,22 @@ BEGIN
             THROW 51001, N'El actor no existe.', 1;
         IF (@Title IS NOT NULL AND LEN(LTRIM(RTRIM(@Title))) = 0)
             OR (@Description IS NOT NULL AND LEN(LTRIM(RTRIM(@Description))) = 0)
-            THROW 51004, N'El título y la descripción no pueden quedar vacíos.', 1;
-        DECLARE @OldTitle nvarchar(max), @OldDescription nvarchar(max), @Changes nvarchar(max) = N'';
-        SELECT @OldTitle = Title, @OldDescription = Description FROM dbo.TICKET WHERE ID = @Ticket_id;
+            OR (@Equipment IS NOT NULL AND LEN(LTRIM(RTRIM(@Equipment))) = 0)
+            THROW 51004, N'El título, la descripción y el equipo no pueden quedar vacíos.', 1;
+        DECLARE @OldTitle nvarchar(max), @OldDescription nvarchar(max), @OldEquipment nvarchar(max),
+            @Changes nvarchar(max) = N'';
+        SELECT @OldTitle = Title, @OldDescription = Description, @OldEquipment = Equipment
+        FROM dbo.TICKET WHERE ID = @Ticket_id;
         IF @Title IS NOT NULL AND CONVERT(varbinary(max), @Title) <> CONVERT(varbinary(max), @OldTitle)
             SET @Changes = CONCAT(@Changes, N' | Título: [', @OldTitle, N'] -> [', @Title, N']');
         IF @Description IS NOT NULL AND CONVERT(varbinary(max), @Description) <> CONVERT(varbinary(max), @OldDescription)
             SET @Changes = CONCAT(@Changes, N' | Descripción: [', @OldDescription, N'] -> [', @Description, N']');
+        IF @Equipment IS NOT NULL AND CONVERT(varbinary(max), @Equipment) <> CONVERT(varbinary(max), @OldEquipment)
+            SET @Changes = CONCAT(@Changes, N' | Equipo: [', @OldEquipment, N'] -> [', @Equipment, N']');
         IF @Changes = N'' THROW 51005, N'No se proporcionaron cambios.', 1;
         UPDATE dbo.TICKET SET Title = COALESCE(@Title, Title),
-            Description = COALESCE(@Description, Description), UpdatedAt = @Now WHERE ID = @Ticket_id;
+            Description = COALESCE(@Description, Description), Equipment = COALESCE(@Equipment, Equipment),
+            UpdatedAt = @Now WHERE ID = @Ticket_id;
         INSERT dbo.HISTORY (ID, Ticket_id, User_id, Comment, prevState, newState, CreatedAt, UpdatedAt)
         VALUES (NEWID(), @Ticket_id, @User_id, CONCAT(COALESCE(@Comment, N''), @Changes),
             @State, @State, @Now, @Now);
@@ -125,7 +132,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     SELECT s.ID AS StateId, s.name AS StateName,
-        COALESCE((SELECT t.ID, t.User_id, t.State_id, t.Title, t.Description, t.CreatedAt, t.UpdatedAt
+        COALESCE((SELECT t.ID, t.User_id, t.State_id, t.Title, t.Description, t.Equipment, t.CreatedAt, t.UpdatedAt
             FROM dbo.TICKET t
             WHERE t.State_id = s.ID AND t.DeletedAt IS NULL
             ORDER BY t.CreatedAt DESC, t.ID

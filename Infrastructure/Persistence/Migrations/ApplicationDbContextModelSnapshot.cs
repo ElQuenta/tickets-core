@@ -421,6 +421,10 @@ namespace tickets_core.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Equipment")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid>("StateId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("State_id");

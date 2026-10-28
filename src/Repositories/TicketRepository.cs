@@ -8,11 +8,12 @@ namespace tickets_core.src.Repositories;
 
 public sealed class TicketRepository(ApplicationDbContext context)
 {
-    public async Task<Ticket> CreateAsync(Guid userId, string title, string description,
+    public async Task<Ticket> CreateAsync(Guid userId, string title, string description, string equipment,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentException.ThrowIfNullOrWhiteSpace(equipment);
 
         if (!await context.Users.AnyAsync(user => user.Id == userId, cancellationToken))
             throw new InvalidOperationException("El usuario no existe.");
@@ -28,7 +29,8 @@ public sealed class TicketRepository(ApplicationDbContext context)
             UserId = userId,
             StateId = stateId,
             Title = title,
-            Description = description
+            Description = description,
+            Equipment = equipment
         };
         context.Tickets.Add(ticket);
         await context.SaveChangesAsync(cancellationToken);
@@ -56,10 +58,11 @@ public sealed class TicketRepository(ApplicationDbContext context)
             """, cancellationToken);
 
     public async Task EditAsync(Guid ticketId, Guid userId, string? title = null,
-        string? description = null, string? comment = null, CancellationToken cancellationToken = default) =>
+        string? description = null, string? comment = null, string? equipment = null,
+        CancellationToken cancellationToken = default) =>
         await context.Database.ExecuteSqlInterpolatedAsync($"""
             EXEC dbo.SP_EditTicket @Ticket_id={ticketId}, @User_id={userId},
-                @Title={title}, @Description={description}, @Comment={comment}
+                @Title={title}, @Description={description}, @Comment={comment}, @Equipment={equipment}
             """, cancellationToken);
 
     public async Task DeleteAsync(Guid ticketId, Guid userId, string? comment,

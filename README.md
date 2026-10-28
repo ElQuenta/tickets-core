@@ -52,6 +52,12 @@ No existe una capa Routes separada. Heredar de `ApiControllerBase` permite usar
   de Identity usan propiedades sombra de EF.
   Las filas existentes reciben la fecha de aplicación de la migración; no se
   reconstruyen fechas históricas que no estaban almacenadas.
+- `TICKET.Equipment` es texto Unicode obligatorio (`nvarchar(max)`). Se exige al crear un ticket;
+  en edición, omitirlo o enviar `null` conserva el equipo actual, y un valor vacío se rechaza.
+  Se devuelve en creación, detalle, agrupación por estado y listado de eliminados.
+  Los cambios de equipo registran el valor anterior y el nuevo en el historial.
+  La migración `AddTicketEquipment` conserva los tickets existentes y les asigna
+  `Sin especificar`; instala las nuevas versiones de los SP y restaura las anteriores al revertir.
 - `TICKET.DeletedAt` es nullable y empieza en `NULL`. El SP de lectura excluye
   borrados; las consultas EF directas deben filtrar `DeletedAt == null` cuando corresponda.
   El historial permanece consultable después del borrado.
@@ -160,7 +166,7 @@ El login utiliza el `UserName` configurado aunque el campo de la petición se ll
 | Procedimiento | Parámetros | Comportamiento |
 | --- | --- | --- |
 | `dbo.SP_ChangeTicketState` | `@Ticket_id`, `@State_id`, `@User_id`, `@Comment = NULL` | Solo permite `Pendiente → En Proceso → Resuelto`, registra ambos estados y el comentario. Rechaza saltos, retrocesos y repetir el estado. |
-| `dbo.SP_EditTicket` | `@Ticket_id`, `@User_id`, `@Title = NULL`, `@Description = NULL`, `@Comment = NULL` | `NULL` conserva el campo. Rechaza textos vacíos y operaciones sin cambios. Concatena al comentario los valores anteriores y nuevos y crea historial conservando el estado. |
+| `dbo.SP_EditTicket` | `@Ticket_id`, `@User_id`, `@Title = NULL`, `@Description = NULL`, `@Comment = NULL`, `@Equipment = NULL` | `NULL` conserva el campo. Rechaza textos vacíos y operaciones sin cambios. Concatena al comentario los valores anteriores y nuevos y crea historial conservando el estado. |
 | `dbo.SP_DeleteTicket` | `@Ticket_id`, `@User_id`, `@Comment = NULL` | Asigna `DeletedAt`, registra el comentario y conserva el estado en ticket e historial. |
 | `dbo.SP_GetTicketsGroupedByState` | Ninguno | Devuelve `StateId`, `StateName`, `Tickets` (array JSON), un registro por estado, incluso sin tickets (`[]`). Excluye borrados y ordena cada grupo por `CreatedAt DESC`, con desempate por ID. |
 
@@ -171,6 +177,32 @@ autenticado en la futura capa de servicio; los SP no implementan autorización p
 No se generan eventos de negocio por SQL directo o `SaveChanges`: las operaciones
 que requieran historial deben invocar estos SP. Los errores de negocio usan los
 números SQL `51000` a `51005`. La consulta agrupada ordena los estados según el flujo.
+
+## Crear y editar tickets
+
+`POST /api/tickets` requiere sesión y los tres campos de texto:
+
+```json
+{
+  "title": "No enciende",
+  "description": "El equipo no responde al botón de encendido.",
+  "equipment": "Laptop Dell Latitude 5420 - INV-001"
+}
+```
+
+`PUT /api/tickets/{ticketId}` permite cambiar solo el equipo, con comentario opcional:
+
+```json
+{
+  "equipment": "Laptop Dell Latitude 5430 - INV-002",
+  "comment": "Corrección del equipo reportado"
+}
+```
+
+El detalle (`GET /api/tickets/{ticketId}`) y los eliminados (`GET /api/tickets/deleted`)
+exponen `equipment`. La consulta agrupada (`GET /api/tickets`) también incluye
+`equipment` en cada ticket y conserva los identificadores `ID`, `User_id` y `State_id`.
+Los endpoints de estado y borrado conservan el equipo del ticket.
 
 ## Respuestas y seguridad
 

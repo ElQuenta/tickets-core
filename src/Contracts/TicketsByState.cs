@@ -10,5 +10,6 @@ public sealed record TicketSummary(
     [property: JsonPropertyName("State_id")] Guid StateId,
     string Title,
     string Description,
+    string Equipment,
     DateTime CreatedAt,
     DateTime UpdatedAt);
