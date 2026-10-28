@@ -29,7 +29,9 @@ public static class IdentityEndpoints
                 (!string.Equals(route.RoutePattern.RawText?.TrimEnd('/'),
                     "/api/auth/manage/2fa", StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(route.RoutePattern.RawText?.TrimEnd('/'),
-                    "/api/auth/login", StringComparison.OrdinalIgnoreCase)))
+                    "/api/auth/login", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(route.RoutePattern.RawText?.TrimEnd('/'),
+                    "/api/auth/register", StringComparison.OrdinalIgnoreCase)))
             .ToArray();
 
         public override IChangeToken GetChangeToken() => source.GetChangeToken();

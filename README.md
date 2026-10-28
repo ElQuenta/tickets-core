@@ -200,7 +200,7 @@ no deben devolver entidades de Identity directamente.
 
 ## Endpoints de Identity
 
-Las rutas nativas se publican bajo `/api/auth` y aparecen en `/openapi/v1.json`
+Las rutas de autenticación se publican bajo `/api/auth` y aparecen en `/openapi/v1.json`
 en Development. No hay ruta de 2FA: `/api/auth/manage/2fa` devuelve 404 y no figura
 en OpenAPI. No se añade una columna `TwoFactorEnabled` ni se requieren migraciones nuevas.
 
@@ -215,22 +215,52 @@ en OpenAPI. No se añade una columna `TwoFactorEnabled` ni se requieren migracio
 | POST | `/api/auth/resetPassword` |
 | GET / POST | `/api/auth/manage/info` |
 
+`POST /api/auth/register` recibe el nombre de usuario, correo y contraseña:
+
+```json
+{
+  "username": "juan",
+  "email": "juan@ejemplo.com",
+  "password": "ClaveSegura123!"
+}
+```
+
+El nombre de usuario y el correo deben ser únicos. Se conservan las validaciones
+de contraseña de Identity y el envío del correo de confirmación mediante SMTP.
+El registro exitoso devuelve `200 OK` con el mismo contrato del login:
+
+```json
+{
+  "username": "juan",
+  "roles": [],
+  "tokenType": "Bearer",
+  "accessToken": "...",
+  "expiresIn": 3600,
+  "refreshToken": "..."
+}
+```
+
+El registro inicia sesión y no asigna roles automáticamente. Los errores de
+validación devuelven `400` con `errors` en formato ValidationProblem de Identity.
+Con `?useCookies=true` o `?useSessionCookies=true` devuelve únicamente `username`
+y `roles`, y establece la cookie de sesión, igual que el login.
+
 `POST /api/auth/login?useCookies=true` inicia sesión con cookies. Sin ese parámetro
 devuelve tokens bearer propios de Identity (no JWT). El cuerpo de login contiene
-`email` y `password`; Identity utiliza `email` como nombre de usuario. Para el admin
-de seed, si `Seed__Admin__UserName` es diferente de su correo, enviar ese nombre en
-el campo `email`. Los registros nativos usan el correo como nombre de usuario.
+`email` y `password`; la búsqueda de la cuenta se realiza por correo, aunque su
+nombre de usuario sea diferente. Para las cuentas de seed, enviar su correo en
+el campo `email`.
 
 `manage/info` requiere autenticación. Las respuestas de los handlers nativos
 conservan su formato de Identity y no pasan por el filtro MVC `ApiResponseFilter`.
-El login personalizado también conserva una respuesta directa: incluye `username`
+El login y el registro personalizados también conservan una respuesta directa: incluyen `username`
 y `roles`, además de `tokenType`, `accessToken`, `expiresIn` y `refreshToken` cuando
 se usan tokens. Con cookies devuelve únicamente `username` y `roles`.
 
-El flujo se divide en `CustomLoginEndpoints` (validación de entrada y respuesta HTTP),
-`AuthService` (credenciales, bloqueo, roles y sesión) e `IdentityTokenService`
-(emisión de tokens de Identity). Los DTO están en `src/Contracts/Login*.cs`.
-El login nativo se excluye en `IdentityEndpoints` para evitar rutas duplicadas.
+El flujo se divide en `CustomLoginEndpoints` y `CustomRegisterEndpoints` (respuesta HTTP),
+`AuthService` (registro, credenciales, bloqueo, roles y sesión) e `IdentityTokenService`
+(emisión de tokens de Identity). Los DTO están en `src/Contracts`.
+El login y el registro nativos se excluyen en `IdentityEndpoints` para evitar rutas duplicadas.
 `/refresh` conserva el contrato nativo de Identity.
 
 Referencia: [Identity API de Microsoft](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-10.0).
