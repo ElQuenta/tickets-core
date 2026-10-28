@@ -242,6 +242,12 @@ contraseñas, hashes ni stamps. Los roles se asignan por el endpoint existente
 `POST /api/users/{userId}/roles` y se conservan al editar el usuario.
 No se requieren migraciones.
 
+`DELETE /api/users/{userId}/roles/{roleId}` requiere el rol `Admin` y no recibe cuerpo.
+Quita la asignación y devuelve `200` con `data: { "userId": "...", "roleId": "..." }`
+en el formato `ApiResponse`. Devuelve `404` si el usuario no existe o no tiene ese rol,
+y `409` si se intenta quitar su último rol. Las eliminaciones del mismo usuario
+se serializan mediante una transacción para que solicitudes simultáneas no lo dejen sin roles.
+
 ## Respuestas y seguridad
 
 Los resultados JSON de controllers se envuelven con `success`, `message`, `data`,

@@ -39,6 +39,37 @@ namespace tickets_core.src.Repositories
             }
         }
 
+        public async Task<bool> DeleteUserRoleAsync(Guid userId, Guid roleId,
+            CancellationToken cancellationToken = default)
+        {
+            var strategy = context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+                var existingUserId = await context.Users
+                    .FromSqlInterpolated($"SELECT * FROM [dbo].[AspNetUsers] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {userId}")
+                    .AsNoTracking()
+                    .Select(user => (Guid?)user.Id)
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (existingUserId is null)
+                    throw new KeyNotFoundException("El usuario no existe.");
+
+                var roleIds = await context.UserRoles.Where(assignment => assignment.UserId == userId)
+                    .Select(assignment => assignment.RoleId).ToListAsync(cancellationToken);
+                if (!roleIds.Contains(roleId))
+                    throw new KeyNotFoundException("El usuario no tiene asignado ese rol.");
+
+                if (roleIds.Count <= 1)
+                    return false;
+
+                await context.UserRoles.Where(assignment => assignment.UserId == userId && assignment.RoleId == roleId)
+                    .ExecuteDeleteAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return true;
+            });
+        }
+
         private Task<bool> AssignmentExistsAsync(Guid userId, Guid roleId, CancellationToken cancellationToken) =>
             context.UserRoles.AnyAsync(assignment => assignment.UserId == userId && assignment.RoleId == roleId,
                 cancellationToken);
