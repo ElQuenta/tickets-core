@@ -208,6 +208,40 @@ exponen `equipment`. La consulta agrupada (`GET /api/tickets`) también incluye
 `equipment` en cada ticket y conserva los identificadores `ID`, `User_id` y `State_id`.
 Los endpoints de estado y borrado conservan el equipo del ticket.
 
+## Administrar usuarios
+
+Ambos endpoints requieren el rol `Admin` y usan el formato `ApiResponse`:
+
+- `GET /api/users`: lista usuarios con `id`, `username`, `email`, `emailConfirmed`,
+  `phoneNumber`, `phoneNumberConfirmed`, `lockoutEnabled`, `lockoutEnd`,
+  `accessFailedCount`, `createdAt`, `updatedAt` y `roles` (lista de strings, `[]` si no tiene roles).
+- `PUT /api/users/{userId}`: reemplaza la información editable y devuelve el usuario con sus roles.
+  `username` y `email` son obligatorios. Los otros campos toman los valores del ejemplo
+  si se omiten. Omitir `password` o enviar `null` conserva la contraseña actual;
+  cualquier string, incluido uno vacío, pasa por las validaciones de contraseña de Identity.
+  `accessFailedCount` es de solo lectura y conserva su valor al editar el usuario.
+
+```json
+{
+  "username": "juan",
+  "email": "juan@ejemplo.com",
+  "phoneNumber": null,
+  "emailConfirmed": false,
+  "phoneNumberConfirmed": false,
+  "lockoutEnabled": true,
+  "lockoutEnd": null,
+  "password": "NuevaClaveSegura123!"
+}
+```
+
+La actualización usa Identity para validar, normalizar y hashear; los cambios se
+guardan en una sola escritura, sin modificaciones parciales ante errores de validación.
+Un nombre, correo o teléfono duplicado, o una contraseña inválida, devuelve `400`
+con `errors`; un usuario inexistente devuelve `404`. Las respuestas no exponen
+contraseñas, hashes ni stamps. Los roles se asignan por el endpoint existente
+`POST /api/users/{userId}/roles` y se conservan al editar el usuario.
+No se requieren migraciones.
+
 ## Respuestas y seguridad
 
 Los resultados JSON de controllers se envuelven con `success`, `message`, `data`,

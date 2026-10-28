@@ -20,6 +20,8 @@ public static class DependencyInjection
         services.AddIdentitySecurity();
         services.AddScoped<IdentityTokenService>();
         services.AddScoped<AuthService>();
+        services.AddScoped<UserRepository>();
+        services.AddScoped<UserService>();
         services.AddScoped<HistoryRepository>();
         services.AddScoped<RoleRepository>();
         services.AddScoped<RoleService>();
